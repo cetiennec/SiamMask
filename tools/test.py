@@ -125,7 +125,7 @@ def generate_anchor(cfg, score_size):
                          [ori + total_stride * dy for dy in range(score_size)])
     xx, yy = np.tile(xx.flatten(), (anchor_num, 1)).flatten(), \
              np.tile(yy.flatten(), (anchor_num, 1)).flatten()
-    anchor[:, 0], anchor[:, 1] = xx.astype(np.float32), yy.astype(np.float32)
+    anchor[:, 0], anchor[:, 1] = xx.astype(float), yy.astype(float)
     return anchor
 
 
@@ -266,7 +266,7 @@ def siamese_track(state, im, mask_enable=False, refine_enable=False, device='cpu
             c = -a * bbox[0]
             d = -b * bbox[1]
             mapping = np.array([[a, 0, c],
-                                [0, b, d]]).astype(np.float)
+                                [0, b, d]]).astype(float)
             crop = cv2.warpAffine(image, mapping, (out_sz[0], out_sz[1]),
                                   flags=cv2.INTER_LINEAR,
                                   borderMode=cv2.BORDER_CONSTANT,
@@ -282,10 +282,16 @@ def siamese_track(state, im, mask_enable=False, refine_enable=False, device='cpu
         mask_in_img = crop_back(mask, back_box, (state['im_w'], state['im_h']))
 
         target_mask = (mask_in_img > p.seg_thr).astype(np.uint8)
-        if cv2.__version__[-5] == '4':
-            contours, _ = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        # Modify the line to handle different OpenCV versions
+        contours_data = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        # Unpack the results based on the number of returned values
+        if len(contours_data) == 3:
+            _, contours, _ = contours_data  # For older versions of OpenCV
         else:
-            _, contours, _ = cv2.findContours(target_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+            contours, _ = contours_data  # For OpenCV 4.x and later
+
         cnt_area = [cv2.contourArea(cnt) for cnt in contours]
         if len(contours) != 0 and np.max(cnt_area) > 100:
             contour = contours[np.argmax(cnt_area)]  # use max area polygon
@@ -429,7 +435,7 @@ def MultiBatchIouMeter(thrs, outputs, targets, start=None, end=None):
         object_ids = [int(id) for id in start]
 
     num_object = len(object_ids)
-    res = np.zeros((num_object, len(thrs)), dtype=np.float32)
+    res = np.zeros((num_object, len(thrs)), dtype=float)
 
     output_max_id = np.argmax(outputs, axis=0).astype('uint8')+1
     outputs_max = np.max(outputs, axis=0)

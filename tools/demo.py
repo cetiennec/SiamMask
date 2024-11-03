@@ -4,7 +4,7 @@
 # Written by Qiang Wang (wangqiang2015 at ia.ac.cn)
 # --------------------------------------------------------
 import glob
-from tools.test import *
+from test import *
 
 parser = argparse.ArgumentParser(description='PyTorch Tracking Demo')
 
@@ -12,7 +12,7 @@ parser.add_argument('--resume', default='', type=str, required=True,
                     metavar='PATH',help='path to latest checkpoint (default: none)')
 parser.add_argument('--config', dest='config', default='config_davis.json',
                     help='hyper-parameter of SiamMask in json format')
-parser.add_argument('--base_path', default='../../data/tennis', help='datasets')
+parser.add_argument('--base_path', default='/Users/Etienne/PycharmProjects/drone_traj_mavlink/simu/drone_sqTeOgLN.mp4', help='datasets')
 parser.add_argument('--cpu', action='store_true', help='cpu mode')
 args = parser.parse_args()
 
@@ -32,8 +32,26 @@ if __name__ == '__main__':
     siammask.eval().to(device)
 
     # Parse Image file
-    img_files = sorted(glob.glob(join(args.base_path, '*.jp*')))
-    ims = [cv2.imread(imf) for imf in img_files]
+    # img_files = sorted(glob.glob(join(args.base_path, '*.png')))
+    # ims = [cv2.imread(imf) for imf in img_files]
+
+    # Open the video file
+    video_path = args.base_path  # Replace with your video file path
+    cap = cv2.VideoCapture(video_path)
+
+    if not cap.isOpened():
+        print("Error: Could not open video.")
+        exit()
+
+    # Read frames from the video
+    ims = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break  # Exit the loop if no more frames are available
+        ims.append(frame)
+
+    cap.release()  # Release the video capture object
 
     # Select ROI
     cv2.namedWindow("SiamMask", cv2.WND_PROP_FULLSCREEN)
@@ -57,7 +75,7 @@ if __name__ == '__main__':
             mask = state['mask'] > state['p'].seg_thr
 
             im[:, :, 2] = (mask > 0) * 255 + (mask == 0) * im[:, :, 2]
-            cv2.polylines(im, [np.int0(location).reshape((-1, 1, 2))], True, (0, 255, 0), 3)
+            cv2.polylines(im, [np.int32(location).reshape((-1, 1, 2))], True, (0, 255, 0), 3)
             cv2.imshow('SiamMask', im)
             key = cv2.waitKey(1)
             if key > 0:
